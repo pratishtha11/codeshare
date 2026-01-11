@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>CodeShare - Share Code Instantly</title>
+  <meta name="csrf-token" content="<%= form_authenticity_token %>">
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -110,7 +111,7 @@
         btn.textContent = 'Creating...';
         
         var expiresAt = document.getElementById('burn').checked 
-          ? new Date(Date.now() + 5 * 60 * 1000).toISOString
+          ? new Date(Date.now() + 5 * 60 * 1000).toISOString()
           : null;
         
         try {
@@ -118,7 +119,7 @@
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content || ''
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
             },
             body: JSON.stringify({
               snippet: {
