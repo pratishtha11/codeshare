@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= @snippet.title || "Code Snippet" %> - CodeShare</title>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e1e1e; color: #d4d4d4; min-height: 100vh; }
+    .header { background: #2d2d2d; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3d3d3d; flex-wrap: wrap; gap: 10px; }
+    .logo { font-size: 24px; font-weight: bold; color: #569cd6; text-decoration: none; }
+    .snippet-info { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .title { font-size: 18px; color: #d4d4d4; }
+    .language-badge { background: #0e639c; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; text-transform: uppercase; }
+    .views { color: #808080; font-size: 14px; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .editor-wrapper { border: 1px solid #3d3d3d; border-radius: 8px; overflow: hidden; }
+    #editor { height: calc(100vh - 220px); min-height: 400px; width: 100%; }
+    .actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { background: #3d3d3d; color: #d4d4d4; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .btn:hover { background: #4d4d4d; }
+    .btn.primary { background: #0e639c; }
+    .btn.primary:hover { background: #1177bb; }
+    .meta { margin-top: 15px; color: #808080; font-size: 13px; flex-wrap: wrap; }
+    .meta span { margin-right: 20px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/" class="logo">CodeShare</a>
+    
+    <div class="snippet-info">
+      <% if @snippet.title.present? %>
+        <span class="title"><%= @snippet.title %></span>
+      <% end %>
+      <span class="language-badge"><%= @snippet.language %></span>
+      <span class="views"><%= @snippet.views_count %> views</span>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="editor-wrapper">
+      <div id="editor"></div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn primary" onclick="copyCode()">📋 Copy Code</button>
+      <button class="btn" onclick="copyUrl()">🔗 Copy Link</button>
+      <button class="btn" onclick="window.location.href='/'">✨ New Snippet</button>
+    </div>
+    
+    <div class="meta">
+      <span>Created: <%= @snippet.created_at.strftime("%B %d, %Y at %H:%M") %></span>
+      <% if @snippet.expires_at %>
+        <span style="color: #f14c4c;">Expires: <%= @snippet.expires_at.strftime("%B %d, %Y at %H:%M") %></span>
+      <% end %>
+    </div>
+  </div>
+
+  <script>
+    var codeContent = <%= raw JSON.generate(@snippet.code_content) %>;
+    var language = '<%= @snippet.language %>';
+    
+    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }});
+    
+    require(['vs/editor/editor.main'], function() {
+      var editor = monaco.editor.create(document.getElementById('editor'), {
+        value: codeContent,
+        language: language === 'plaintext' ? 'plaintext' : language,
+        theme: 'vs-dark',
+        readOnly: true,
+        automaticLayout: true,
+        fontSize: 14,
+        minimap: { enabled: true },
+        scrollBeyondLastLine: false,
+        wordWrap: 'on'
+      });
+    });
+    
+    function copyCode() {
+      navigator.clipboard.writeText(codeContent).then(function() {
+        alert('Code copied to clipboard!');
+      });
+    }
+    
+    function copyUrl() {
+      navigator.clipboard.writeText(window.location.href).then(function() {
+        alert('Link copied to clipboard!');
+      });
+    }
+  </script>
+</body>
+</html>

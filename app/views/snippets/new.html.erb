@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CodeShare - Share Code Instantly</title>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e1e1e; color: #d4d4d4; min-height: 100vh; }
+    .header { background: #2d2d2d; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3d3d3d; }
+    .logo { font-size: 24px; font-weight: bold; color: #569cd6; text-decoration: none; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .editor-options { display: flex; gap: 20px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+    select, input { background: #3c3c3c; border: 1px solid #3d3d3d; color: #d4d4d4; padding: 8px 12px; border-radius: 4px; font-size: 14px; }
+    input { flex: 1; max-width: 300px; }
+    select { min-width: 150px; }
+    .editor-wrapper { border: 1px solid #3d3d3d; border-radius: 8px; overflow: hidden; }
+    #editor { height: 500px; width: 100%; }
+    .share-btn { background: #0e639c; color: white; border: none; padding: 10px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    .share-btn:hover { background: #1177bb; }
+    .share-btn:disabled { background: #4d4d4d; cursor: not-allowed; }
+    .share-options { margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .url-box { flex: 1; min-width: 300px; background: #2d2d2d; border: 1px solid #3d3d3d; padding: 12px; border-radius: 4px; display: none; }
+    .url-box.show { display: block; }
+    .url-box input { width: 100%; background: transparent; border: none; color: #4ec9b0; font-family: monospace; }
+    .copy-btn { background: #3d3d3d; color: #d4d4d4; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; }
+    .copy-btn:hover { background: #4d4d4d; }
+    .burn-option { display: flex; align-items: center; gap: 8px; }
+    .burn-option label { font-size: 14px; color: #9cdcfe; cursor: pointer; }
+    .flash { padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
+    .flash-notice { background: #0e639c; color: white; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/" class="logo">CodeShare</a>
+  </div>
+  
+  <div class="container">
+    <% if flash[:notice] %>
+      <div class="flash flash-notice"><%= flash[:notice] %></div>
+    <% end %>
+    
+    <form id="snippet-form">
+      <div class="editor-options">
+        <input type="text" name="title" placeholder="Optional title..." id="title">
+        
+        <select name="language" id="language">
+          <option value="plaintext">Plain Text</option>
+          <option value="ruby">Ruby</option>
+          <option value="javascript">JavaScript</option>
+          <option value="python">Python</option>
+          <option value="java">Java</option>
+          <option value="cpp">C++</option>
+          <option value="c">C</option>
+          <option value="go">Go</option>
+          <option value="rust">Rust</option>
+          <option value="html">HTML</option>
+          <option value="css">CSS</option>
+          <option value="sql">SQL</option>
+          <option value="json">JSON</option>
+          <option value="bash">Bash</option>
+        </select>
+        
+        <div class="burn-option">
+          <input type="checkbox" id="burn" name="burn">
+          <label for="burn">Burn after reading (1 view)</label>
+        </div>
+      </div>
+      
+      <div class="editor-wrapper">
+        <div id="editor"></div>
+      </div>
+      
+      <div class="share-options">
+        <button type="submit" class="share-btn" id="share-btn">Share Code</button>
+        
+        <div class="url-box" id="url-box">
+          <input type="text" id="share-url" readonly>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }});
+    
+    require(['vs/editor/editor.main'], function() {
+      var editor = monaco.editor.create(document.getElementById('editor'), {
+        value: '// Write your code here...\nconsole.log("Hello, CodeShare!");',
+        language: 'javascript',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 14,
+        minimap: { enabled: true },
+        scrollBeyondLastLine: false,
+        wordWrap: 'on'
+      });
+      
+      document.getElementById('language').addEventListener('change', function(e) {
+        var language = e.target.value;
+        var model = editor.getModel();
+        monaco.editor.setModelLanguage(model, language === 'plaintext' ? 'plaintext' : language);
+      });
+      
+      document.getElementById('snippet-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        var btn = document.getElementById('share-btn');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+        
+        var expiresAt = document.getElementById('burn').checked 
+          ? new Date(Date.now() + 5 * 60 * 1000).toISOString
+          : null;
+        
+        try {
+          var response = await fetch('/snippets', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({
+              snippet: {
+                code_content: editor.getValue(),
+                language: document.getElementById('language').value,
+                title: document.getElementById('title').value,
+                expires_at: expiresAt
+              }
+            })
+          });
+          
+          var data = await response.json();
+          
+          if (data.success) {
+            var urlBox = document.getElementById('url-box');
+            var urlInput = document.getElementById('share-url');
+            
+            urlInput.value = data.url;
+            urlBox.classList.add('show');
+            
+            btn.textContent = 'Shared!';
+            navigator.clipboard.writeText(data.url);
+          } else {
+            alert('Error: ' + (data.errors?.join(', ') || 'Unknown error'));
+            btn.disabled = false;
+            btn.textContent = 'Share Code';
+          }
+        } catch (error) {
+          alert('Failed to create snippet: ' + error.message);
+          btn.disabled = false;
+          btn.textContent = 'Share Code';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
