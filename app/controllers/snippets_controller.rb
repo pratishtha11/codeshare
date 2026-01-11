@@ -1,6 +1,6 @@
 class SnippetsController < ApplicationController
+  skip_before_action :verify_authenticity_token, only: [:create]
   before_action :find_snippet, only: [:show, :raw]
-  skip_before_action :verify_authenticity_token, only: [:create], if: -> { request.format.json? }
   
   def new
     @snippet = Snippet.new
@@ -13,8 +13,8 @@ class SnippetsController < ApplicationController
       render json: {
         success: true,
         short_code: @snippet.short_code,
-        url: @snippet.full_url,
-        raw_url: @snippet.raw_url
+        url: "/snippets/#{@snippet.short_code}",
+        raw_url: "/raw/#{@snippet.short_code}"
       }, status: :created
     else
       render json: { 
